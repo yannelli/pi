@@ -27,7 +27,13 @@ import { DefaultResourceLoader } from "../core/resource-loader.ts";
 import { SettingsManager } from "../core/settings-manager.ts";
 import { createChatViewport } from "../modes/interactive/chat-viewport.ts";
 import { CustomEditor } from "../modes/interactive/components/custom-editor.ts";
-import { getEditorTheme, setRegisteredThemes, stopThemeWatcher, theme } from "../modes/interactive/theme/theme.ts";
+import {
+	getEditorTheme,
+	getPickerSelectListTheme,
+	setRegisteredThemes,
+	stopThemeWatcher,
+	theme,
+} from "../modes/interactive/theme/theme.ts";
 import { InteractiveThemeController } from "../modes/interactive/theme/theme-controller.ts";
 import { createInteractiveTui } from "../modes/interactive/tui-renderer.ts";
 import { type OpenClientRuntimeOptions, openClientRuntime } from "./client-runtime.ts";
@@ -79,14 +85,6 @@ interface PendingSelection {
 	readonly selectedValue?: string;
 	resolve(value: string | undefined): void;
 }
-
-const selectTheme = {
-	selectedPrefix: (text: string) => theme.fg("accent", text),
-	selectedText: (text: string) => theme.fg("accent", text),
-	description: (text: string) => theme.fg("muted", text),
-	scrollInfo: (text: string) => theme.fg("dim", text),
-	noMatch: (text: string) => theme.fg("warning", text),
-};
 
 /** Service-only presentation driven by a replicated main-lane snapshot. */
 export class ExperimentalClientTui implements Component {
@@ -384,7 +382,7 @@ export class ExperimentalClientTui implements Component {
 			const selector = new Container();
 			selector.addChild(new Text(theme.bold(this.#selection.title), 1, 1));
 			const items = [...this.#selection.items];
-			this.#selectList = new SelectList(items, Math.min(Math.max(items.length, 1), 12), selectTheme);
+			this.#selectList = new SelectList(items, Math.min(Math.max(items.length, 1), 12), getPickerSelectListTheme());
 			const selectedIndex = items.findIndex((item) => item.value === this.#selection?.selectedValue);
 			if (selectedIndex >= 0) this.#selectList.setSelectedIndex(selectedIndex);
 			this.#selectList.onSelect = (item) => this.#completeSelection(item.value);

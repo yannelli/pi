@@ -1068,6 +1068,17 @@ export function getSelectListTheme(): SelectListTheme {
 	};
 }
 
+/** Like {@link getSelectListTheme}, but with dim scroll info and a warning when no item matches the filter. */
+export function getPickerSelectListTheme(t: Theme = theme): SelectListTheme {
+	return {
+		selectedPrefix: (text: string) => t.fg("accent", text),
+		selectedText: (text: string) => t.fg("accent", text),
+		description: (text: string) => t.fg("muted", text),
+		scrollInfo: (text: string) => t.fg("dim", text),
+		noMatch: (text: string) => t.fg("warning", text),
+	};
+}
+
 export function getEditorTheme(): EditorTheme {
 	return {
 		borderColor: (text: string) => theme.fg("borderMuted", text),

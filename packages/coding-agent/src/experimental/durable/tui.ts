@@ -21,7 +21,6 @@ import {
 	ScrollView,
 	type SelectItem,
 	SelectList,
-	type SelectListTheme,
 	Spacer,
 	setCapabilityOverrides,
 	setKeybindings,
@@ -42,17 +41,15 @@ import { keyText } from "../../modes/interactive/components/keybinding-hints.ts"
 import { type StatusIndicator, WorkingStatusIndicator } from "../../modes/interactive/components/status-indicator.ts";
 import { ToolExecutionComponent, type ToolRenderers } from "../../modes/interactive/components/tool-execution.ts";
 import { UserMessageComponent } from "../../modes/interactive/components/user-message.ts";
-import { getEditorTheme, getMarkdownTheme, initTheme, theme } from "../../modes/interactive/theme/theme.ts";
+import {
+	getEditorTheme,
+	getMarkdownTheme,
+	getPickerSelectListTheme,
+	initTheme,
+	theme,
+} from "../../modes/interactive/theme/theme.ts";
 import { InteractiveThemeController } from "../../modes/interactive/theme/theme-controller.ts";
 import { agentOf, type DurableController, type DurableView, type DurableViewSource } from "./runtime.ts";
-
-const SELECT_THEME: SelectListTheme = {
-	selectedPrefix: (text) => theme.fg("accent", text),
-	selectedText: (text) => theme.fg("accent", text),
-	description: (text) => theme.fg("muted", text),
-	scrollInfo: (text) => theme.fg("dim", text),
-	noMatch: (text) => theme.fg("warning", text),
-};
 
 /** A filterable list in place of the editor. */
 class ListSelector extends Container implements Focusable {
@@ -102,7 +99,7 @@ class ListSelector extends Container implements Focusable {
 	}
 
 	#build(items: SelectItem[]): SelectList {
-		const list = new SelectList(items, 10, SELECT_THEME);
+		const list = new SelectList(items, 10, getPickerSelectListTheme());
 		list.onSelect = (item) => this.#onSelect(item.value);
 		list.onCancel = this.#onCancel;
 		this.#listContainer.clear();

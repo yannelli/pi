@@ -5,7 +5,7 @@
 
 import {
 	type Component,
-	Container,
+	type Container,
 	type Focusable,
 	Input,
 	type SelectItem,
@@ -19,8 +19,8 @@ import {
 import type { ExtensionCommandContext } from "../../core/extensions/types.ts";
 import type { KeybindingsManager } from "../../core/keybindings.ts";
 import { AuthUrlComponent } from "../../modes/interactive/components/auth-url.ts";
-import { DynamicBorder } from "../../modes/interactive/components/dynamic-border.ts";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";
+import { titledFrame } from "../../modes/interactive/components/titled-frame.ts";
 import { getSelectListTheme, type Theme } from "../../modes/interactive/theme/theme.ts";
 
 export interface McpMenu {
@@ -55,19 +55,6 @@ export interface McpUi {
 	redirectUrl(title: string, authorizationUrl: string, signal: AbortSignal): Promise<string | undefined>;
 }
 
-function frame(theme: Theme, title: string, body: Component[], footer?: string): Container {
-	const container = new Container();
-	container.addChild(new DynamicBorder((text: string) => theme.fg("accent", text)));
-	container.addChild(new Text(theme.fg("accent", theme.bold(title)), 1, 0));
-	for (const child of body) container.addChild(child);
-	if (footer) {
-		container.addChild(new Spacer(1));
-		container.addChild(new Text(theme.fg("dim", footer), 1, 0));
-	}
-	container.addChild(new DynamicBorder((text: string) => theme.fg("accent", text)));
-	return container;
-}
-
 const MAX_VISIBLE_ITEMS = 12;
 
 export class McpManagerView implements McpUi, Component, Focusable {
@@ -83,7 +70,7 @@ export class McpManagerView implements McpUi, Component, Focusable {
 		this.tui = tui;
 		this.theme = theme;
 		this.keybindings = keybindings;
-		this.content = frame(theme, "MCP servers", [new Text(theme.fg("muted", "Loading…"), 1, 1)]);
+		this.content = titledFrame(theme, "MCP servers", [new Text(theme.fg("muted", "Loading…"), 1, 1)]);
 	}
 
 	get focused(): boolean {
@@ -126,7 +113,7 @@ export class McpManagerView implements McpUi, Component, Focusable {
 				if (menu.items.length === 0) {
 					body.push(new Text(this.theme.fg("muted", menu.empty ?? "Nothing to show."), 1, 0));
 					this.setContent(
-						frame(this.theme, menu.title, body, keyHint("tui.select.cancel", menu.cancelLabel)),
+						titledFrame(this.theme, menu.title, body, keyHint("tui.select.cancel", menu.cancelLabel)),
 						(data) => {
 							if (this.keybindings.matches(data, "tui.select.cancel")) finish(undefined);
 						},
@@ -147,7 +134,7 @@ export class McpManagerView implements McpUi, Component, Focusable {
 				list.onSelect = (item) => finish(item.value);
 				list.onCancel = () => finish(undefined);
 				body.push(list);
-				this.setContent(frame(this.theme, menu.title, body, footer), (data) => list.handleInput(data));
+				this.setContent(titledFrame(this.theme, menu.title, body, footer), (data) => list.handleInput(data));
 			};
 			render();
 			unsubscribe = subscribe?.(() => {
@@ -159,10 +146,10 @@ export class McpManagerView implements McpUi, Component, Focusable {
 	status(title: string, message: string, onCancel?: () => void): void {
 		const body = [new Spacer(1), new Text(this.theme.fg("muted", message), 1, 0)];
 		if (!onCancel) {
-			this.setContent(frame(this.theme, title, body));
+			this.setContent(titledFrame(this.theme, title, body));
 			return;
 		}
-		this.setContent(frame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), (data) => {
+		this.setContent(titledFrame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), (data) => {
 			if (this.keybindings.matches(data, "tui.select.cancel")) onCancel();
 		});
 	}
@@ -197,7 +184,7 @@ export class McpManagerView implements McpUi, Component, Focusable {
 				input,
 			];
 			this.setContent(
-				frame(
+				titledFrame(
 					this.theme,
 					title,
 					body,

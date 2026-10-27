@@ -1,5 +1,4 @@
 import {
-	type Component,
 	Container,
 	type Focusable,
 	fuzzyFilter,
@@ -14,9 +13,9 @@ import {
 } from "@earendil-works/pi-tui";
 import type { ExtensionCommandContext } from "../../core/extensions/types.ts";
 import type { KeybindingsManager } from "../../core/keybindings.ts";
-import { DynamicBorder } from "../../modes/interactive/components/dynamic-border.ts";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";
-import type { Theme } from "../../modes/interactive/theme/theme.ts";
+import { titledFrame } from "../../modes/interactive/components/titled-frame.ts";
+import { getPickerSelectListTheme, type Theme } from "../../modes/interactive/theme/theme.ts";
 import type { LlamaModelInfo, LlamaProgress } from "./client.ts";
 import type { HuggingFaceModel } from "./huggingface.ts";
 
@@ -49,29 +48,6 @@ function modelDescription(model: LlamaModelInfo): string {
 	const context = loaded ? contextLabel(model) : undefined;
 	if (context) details.push(`${context} context`);
 	return details.join(" · ");
-}
-
-function selectTheme(theme: Theme) {
-	return {
-		selectedPrefix: (text: string) => theme.fg("accent", text),
-		selectedText: (text: string) => theme.fg("accent", text),
-		description: (text: string) => theme.fg("muted", text),
-		scrollInfo: (text: string) => theme.fg("dim", text),
-		noMatch: (text: string) => theme.fg("warning", text),
-	};
-}
-
-function frame(theme: Theme, title: string, body: Component[], footer?: string): Container {
-	const container = new Container();
-	container.addChild(new DynamicBorder((text: string) => theme.fg("accent", text)));
-	container.addChild(new Text(theme.fg("accent", theme.bold(title)), 1, 0));
-	for (const child of body) container.addChild(child);
-	if (footer) {
-		container.addChild(new Spacer(1));
-		container.addChild(new Text(theme.fg("dim", footer), 1, 0));
-	}
-	container.addChild(new DynamicBorder((text: string) => theme.fg("accent", text)));
-	return container;
 }
 
 export interface LlamaUi {
@@ -290,7 +266,7 @@ class LlamaView implements LlamaUi, Focusable {
 		this.tui = tui;
 		this.theme = theme;
 		this.keybindings = keybindings;
-		this.content = frame(theme, "llama.cpp models", [new Text(theme.fg("muted", "Loading…"), 1, 1)]);
+		this.content = titledFrame(theme, "llama.cpp models", [new Text(theme.fg("muted", "Loading…"), 1, 1)]);
 	}
 
 	get focused(): boolean {
@@ -333,7 +309,7 @@ class LlamaView implements LlamaUi, Focusable {
 			{ value: DOWNLOAD_VALUE, label: "Download model…", description: "Hugging Face owner/repository[:quant]" },
 		];
 		return new Promise((resolve) => {
-			const list = new SelectList(items, Math.min(items.length, 12), selectTheme(this.theme), {
+			const list = new SelectList(items, Math.min(items.length, 12), getPickerSelectListTheme(this.theme), {
 				minPrimaryColumnWidth: 36,
 				maxPrimaryColumnWidth: 56,
 			});
@@ -346,7 +322,7 @@ class LlamaView implements LlamaUi, Focusable {
 			};
 			list.onCancel = () => resolve({ type: "close" });
 			this.setContent(
-				frame(
+				titledFrame(
 					this.theme,
 					"llama.cpp models",
 					[new Text(this.theme.fg("dim", serverUrl), 1, 0), new Spacer(1), list],
@@ -362,12 +338,12 @@ class LlamaView implements LlamaUi, Focusable {
 			const list = new SelectList(
 				options.map((option) => ({ value: option, label: option })),
 				Math.min(options.length, 12),
-				selectTheme(this.theme),
+				getPickerSelectListTheme(this.theme),
 			);
 			list.onSelect = (item) => resolve(item.value);
 			list.onCancel = () => resolve(undefined);
 			this.setContent(
-				frame(
+				titledFrame(
 					this.theme,
 					title,
 					[new Spacer(1), list],
@@ -400,7 +376,7 @@ class LlamaView implements LlamaUi, Focusable {
 				resolve,
 			);
 			this.setContent(
-				frame(
+				titledFrame(
 					this.theme,
 					"Download model",
 					[new Spacer(1), component],
@@ -413,7 +389,7 @@ class LlamaView implements LlamaUi, Focusable {
 	}
 
 	showStatus(title: string, message: string): void {
-		this.setContent(frame(this.theme, title, [new Spacer(1), new Text(this.theme.fg("muted", message), 1, 0)]));
+		this.setContent(titledFrame(this.theme, title, [new Spacer(1), new Text(this.theme.fg("muted", message), 1, 0)]));
 	}
 
 	progress(state: ProgressState): Promise<void> {
@@ -449,7 +425,7 @@ class LlamaView implements LlamaUi, Focusable {
 			);
 		}
 		if (state.detail) body.push(new Text(this.theme.fg("dim", state.detail), 1, 0));
-		this.content = frame(this.theme, state.title, body, keyHint("tui.select.cancel", "stop"));
+		this.content = titledFrame(this.theme, state.title, body, keyHint("tui.select.cancel", "stop"));
 		this.inputHandler = undefined;
 		this.tui.requestRender();
 	}
