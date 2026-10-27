@@ -14,13 +14,17 @@ export interface SessionLocation {
 	release(): Promise<void>;
 }
 
-/** A new session for `cwd`, or its newest one with `continueSession`. */
-export async function selectSession(cwdInput: string, continueSession: boolean): Promise<SessionLocation> {
+/** A new session of app `name` for `cwd`, or its newest one with `continueSession`. */
+export async function selectSession(
+	name: string,
+	cwdInput: string,
+	continueSession: boolean,
+): Promise<SessionLocation> {
 	const cwd = await realpath(resolve(cwdInput));
 	const root = join(
 		getAgentDir(),
 		"experimental",
-		"durable-sessions",
+		`${name}-sessions`,
 		createHash("sha256").update(cwd).digest("hex").slice(0, 24),
 	);
 	await mkdir(root, { recursive: true });
@@ -34,7 +38,7 @@ export async function selectSession(cwdInput: string, continueSession: boolean):
 			.map((entry) => entry.name)
 			.sort()
 			.at(-1);
-		if (!newest) throw new Error(`No durable session exists for ${cwd}`);
+		if (!newest) throw new Error(`No ${name} session exists for ${cwd}`);
 		directory = join(root, newest);
 	} else {
 		directory = join(root, `${String(Date.now()).padStart(13, "0")}-${randomUUID()}`);

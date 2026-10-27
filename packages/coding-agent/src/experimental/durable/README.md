@@ -49,9 +49,11 @@ credentials are shared.
 
 | file | role |
 | --- | --- |
-| `main.ts` | arguments, open, run, close |
+| `main.ts` | runs `app.ts` with `run.ts` |
+| `app.ts` | the coding agent's registry and root agent, as a `DurableApp` |
+| `run.ts` | arguments, open, run, close; shared with [`../vacation`](../vacation) |
 | `sessions.ts` | session directories and the lock |
-| `runtime.ts` | Harness, registry, settings, environments; the plain `DurableView` and `DurableController` |
+| `runtime.ts` | Harness, settings, environments; the plain `DurableView` and `DurableController`; `DurableApp` |
 | `prompt.ts` | pi's system prompt sections (tools, rules, docs, AGENTS.md, skills, cwd) as one extension |
 | `subagent.ts` | the foreground subagent tool |
 | `tui.ts` | rendering with pi's interactive components |

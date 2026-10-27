@@ -2,6 +2,7 @@ import type { AttachedReplicatedState } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { clampThinkingLevel, getSupportedThinkingLevels, type ModelThinkingLevel } from "@earendil-works/pi-ai";
 import {
+	type AgentChange,
 	type AgentState,
 	type Conversation,
 	type ConversationId,
@@ -10,6 +11,7 @@ import {
 	type EntryRecord,
 	Harness,
 	type ModelRef,
+	type Registry,
 	ROOT_CONVERSATION_ID,
 	type Submission,
 	type TaskGraph,
@@ -17,17 +19,22 @@ import {
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 import { ModelRuntime } from "../../core/model-runtime.ts";
 import { SettingsManager } from "../../core/settings-manager.ts";
-import {
-	configureHarnessHttp,
-	createCodingRegistry,
-	createHarnessSettings,
-	ExecutionEnvs,
-	findInitialAgentModel,
-} from "./harness-setup.ts";
+import { configureHarnessHttp, createHarnessSettings, ExecutionEnvs, findInitialAgentModel } from "./harness-setup.ts";
 import { selectSession } from "./sessions.ts";
-import { Subagent } from "./subagent.ts";
 
 const context = BACKGROUND_CONTEXT;
+
+/** What one app built on this runtime adds: its extensions, root agent, and session directory. */
+export interface DurableApp {
+	/** Names the session directory, `experimental/<name>-sessions`, and the app in errors. */
+	readonly name: string;
+	/** The Harness registry for a session in `cwd`. */
+	createRegistry(settingsManager: SettingsManager, cwd: string): Registry;
+	/** Root agent fields for a new session besides model and thinking level. */
+	rootAgent(cwd: string): AgentChange;
+	/** Give tools one Node execution environment per directory. */
+	readonly executionEnvs: boolean;
+}
 
 export interface ModelSummary extends ModelRef {
 	readonly name: string;
@@ -121,8 +128,8 @@ function titleOf(entry: EntryRecord | undefined): { title?: string } {
 	return { title: text.replace(/\s+/g, " ").trim() };
 }
 
-export async function openDurable(options: OpenDurableOptions = {}): Promise<OpenDurableResult> {
-	const location = await selectSession(options.cwd ?? process.cwd(), options.continueSession ?? false);
+export async function openDurable(app: DurableApp, options: OpenDurableOptions = {}): Promise<OpenDurableResult> {
+	const location = await selectSession(app.name, options.cwd ?? process.cwd(), options.continueSession ?? false);
 	const envs = new ExecutionEnvs(location.cwd);
 	let harness: Harness | undefined;
 	try {
@@ -130,8 +137,7 @@ export async function openDurable(options: OpenDurableOptions = {}): Promise<Ope
 		const settingsManager = SettingsManager.create(location.cwd);
 		configureHarnessHttp(settingsManager);
 		const settings = createHarnessSettings(settingsManager);
-		const registry = createCodingRegistry(settingsManager, location.cwd);
-		registry.install(Subagent);
+		const registry = app.createRegistry(settingsManager, location.cwd);
 
 		const pendingReports: unknown[] = [];
 		let report: (error: unknown) => void = (error) => pendingReports.push(error);
@@ -141,7 +147,7 @@ export async function openDurable(options: OpenDurableOptions = {}): Promise<Ope
 				models: modelRuntime,
 				registry,
 				settings,
-				env: envs.env,
+				...(app.executionEnvs ? { env: envs.env } : {}),
 				onReport: (error) => report(error),
 			},
 			context,
@@ -149,7 +155,7 @@ export async function openDurable(options: OpenDurableOptions = {}): Promise<Ope
 		const initial = location.created ? await findInitialAgentModel(settingsManager, modelRuntime) : undefined;
 		const root = await harness.root(context, {
 			agent: {
-				cwd: location.cwd,
+				...app.rootAgent(location.cwd),
 				...(initial?.model === undefined ? {} : { model: initial.model }),
 				...(initial?.thinkingLevel === undefined ? {} : { thinkingLevel: initial.thinkingLevel }),
 			},

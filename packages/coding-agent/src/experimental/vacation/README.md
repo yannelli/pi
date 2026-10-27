@@ -1,8 +1,8 @@
 # vacation
 
-A durable vacation planning agent with a TUI, built on `@earendil-works/pi-durable`. It is a copy of the durable coding
-agent in [`../durable`](../durable) with the coding tools and pi's coding prompt replaced by a vacation planner. It only
-looks like a coding agent because it reuses pi's interactive TUI components.
+A durable vacation planning agent with a TUI, built on `@earendil-works/pi-durable`. It runs on the runtime, sessions,
+and TUI of the durable coding agent in [`../durable`](../durable), with the coding tools and pi's coding prompt replaced
+by a vacation planner. It only looks like a coding agent because it reuses pi's interactive TUI components.
 
 From a pi checkout, after `npm install` and `npm run build`:
 
@@ -46,8 +46,7 @@ shared.
 | file | role |
 | --- | --- |
 | `vacation.ts` | the vacation extensions: `search`, `research`, the report task, and the prompt |
-| `main.ts` | arguments, open, run, close |
-| `sessions.ts` | session directories and the lock |
-| `harness-setup.ts` | HTTP setup, settings, the registry, the initial model |
-| `runtime.ts` | Harness and the plain `DurableView` and `DurableController` |
-| `tui.ts` | rendering with pi's interactive components |
+| `app.ts` | the registry and root agent: the vacation planner and `search`, no coding tools |
+| `main.ts` | runs the app with [`../durable/run.ts`](../durable/run.ts) |
+
+Sessions, HTTP setup, settings, the initial model, the Harness runtime, and the TUI come from [`../durable`](../durable).
