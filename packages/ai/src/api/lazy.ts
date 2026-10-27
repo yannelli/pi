@@ -1,5 +1,6 @@
 import type { Api, AssistantMessage, AssistantMessageEvent, Model, ProviderStreams } from "../types.ts";
 import { AssistantMessageEventStream } from "../utils/event-stream.ts";
+import { createEmptyUsage } from "../utils/usage.ts";
 
 function createSetupErrorMessage(model: Model<Api>, error: unknown, timestamp: number): AssistantMessage {
 	return {
@@ -8,14 +9,7 @@ function createSetupErrorMessage(model: Model<Api>, error: unknown, timestamp: n
 		api: model.api,
 		provider: model.provider,
 		model: model.id,
-		usage: {
-			input: 0,
-			output: 0,
-			cacheRead: 0,
-			cacheWrite: 0,
-			totalTokens: 0,
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-		},
+		usage: createEmptyUsage(),
 		stopReason: "error",
 		errorMessage: error instanceof Error ? error.message : String(error),
 		timestamp,

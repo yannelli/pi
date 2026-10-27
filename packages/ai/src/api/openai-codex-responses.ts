@@ -38,6 +38,7 @@ import {
 	resolveTranscript,
 	resolveTranscriptTools,
 } from "../utils/transcript.ts";
+import { createEmptyUsage } from "../utils/usage.ts";
 import { uuidv7 } from "../utils/uuid.ts";
 import { createGrammarToolInputProperties } from "./constrained-sampling.ts";
 import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
@@ -253,14 +254,7 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 			api: "openai-codex-responses" as Api,
 			provider: model.provider,
 			model: model.id,
-			usage: {
-				input: 0,
-				output: 0,
-				cacheRead: 0,
-				cacheWrite: 0,
-				totalTokens: 0,
-				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-			},
+			usage: createEmptyUsage(),
 			stopReason: "pending",
 			timestamp: Date.now(),
 		};

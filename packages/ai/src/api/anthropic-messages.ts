@@ -52,7 +52,7 @@ import {
 	resolveTranscript,
 	type TranscriptContext,
 } from "../utils/transcript.ts";
-
+import { createEmptyUsage } from "../utils/usage.ts";
 import {
 	getJsonSchemaToolParameters,
 	resolveJsonSchemaStrictSampling,
@@ -568,14 +568,7 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 			provider: model.provider,
 			model: model.id,
 			...(providerThinkingLevel === undefined ? {} : { providerThinkingLevel }),
-			usage: {
-				input: 0,
-				output: 0,
-				cacheRead: 0,
-				cacheWrite: 0,
-				totalTokens: 0,
-				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-			},
+			usage: createEmptyUsage(),
 			stopReason: "pending",
 			timestamp: Date.now(),
 		};

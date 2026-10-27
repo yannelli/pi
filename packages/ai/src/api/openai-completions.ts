@@ -49,6 +49,7 @@ import {
 	resolveTranscriptTools,
 	type TranscriptContext,
 } from "../utils/transcript.ts";
+import { createEmptyUsage } from "../utils/usage.ts";
 import {
 	appendGrammarToolInputJsonDelta,
 	createGrammarToolInputProperties,
@@ -290,14 +291,7 @@ export const stream: StreamFunction<"openai-completions", OpenAICompletionsOptio
 			api: model.api,
 			provider: model.provider,
 			model: model.id,
-			usage: {
-				input: 0,
-				output: 0,
-				cacheRead: 0,
-				cacheWrite: 0,
-				totalTokens: 0,
-				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-			},
+			usage: createEmptyUsage(),
 			stopReason: "pending",
 			timestamp: Date.now(),
 		};
