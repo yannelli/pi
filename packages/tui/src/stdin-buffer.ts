@@ -325,21 +325,7 @@ export class StdinBuffer extends EventEmitter<StdinBufferEventMap> {
 			this.pasteBuffer += this.buffer;
 			this.buffer = "";
 
-			const endIndex = this.pasteBuffer.indexOf(BRACKETED_PASTE_END);
-			if (endIndex !== -1) {
-				const pastedContent = this.pasteBuffer.slice(0, endIndex);
-				const remaining = this.pasteBuffer.slice(endIndex + BRACKETED_PASTE_END.length);
-
-				this.pasteMode = false;
-				this.pasteBuffer = "";
-				this.pendingKittyPrintableCodepoint = undefined;
-
-				this.emit("paste", pastedContent);
-
-				if (remaining.length > 0) {
-					this.process(remaining);
-				}
-			}
+			this.finishPasteIfComplete();
 			return;
 		}
 
@@ -359,21 +345,7 @@ export class StdinBuffer extends EventEmitter<StdinBufferEventMap> {
 			this.pasteBuffer = this.buffer;
 			this.buffer = "";
 
-			const endIndex = this.pasteBuffer.indexOf(BRACKETED_PASTE_END);
-			if (endIndex !== -1) {
-				const pastedContent = this.pasteBuffer.slice(0, endIndex);
-				const remaining = this.pasteBuffer.slice(endIndex + BRACKETED_PASTE_END.length);
-
-				this.pasteMode = false;
-				this.pasteBuffer = "";
-				this.pendingKittyPrintableCodepoint = undefined;
-
-				this.emit("paste", pastedContent);
-
-				if (remaining.length > 0) {
-					this.process(remaining);
-				}
-			}
+			this.finishPasteIfComplete();
 			return;
 		}
 
@@ -393,6 +365,25 @@ export class StdinBuffer extends EventEmitter<StdinBufferEventMap> {
 					this.emitDataSequence(sequence);
 				}
 			}, timeoutMs);
+		}
+	}
+
+	/** Emit the paste once its end marker has arrived, then process the input after it. */
+	private finishPasteIfComplete(): void {
+		const endIndex = this.pasteBuffer.indexOf(BRACKETED_PASTE_END);
+		if (endIndex === -1) return;
+
+		const pastedContent = this.pasteBuffer.slice(0, endIndex);
+		const remaining = this.pasteBuffer.slice(endIndex + BRACKETED_PASTE_END.length);
+
+		this.pasteMode = false;
+		this.pasteBuffer = "";
+		this.pendingKittyPrintableCodepoint = undefined;
+
+		this.emit("paste", pastedContent);
+
+		if (remaining.length > 0) {
+			this.process(remaining);
 		}
 	}
 
