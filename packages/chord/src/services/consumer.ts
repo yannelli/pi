@@ -15,7 +15,7 @@ import type {
 	ServiceSubscription,
 	ServiceSubscriptionSnapshot,
 } from "../types.ts";
-import { RemoteServiceError } from "./errors.ts";
+import { RemoteServiceError, toError } from "./errors.ts";
 import { ServiceSlot } from "./handle.ts";
 import { InstanceDirectory, type InstanceDirectoryEntry } from "./instances.ts";
 import { ReplicatedStateReplica, serviceDeliveryContext } from "./state.ts";
@@ -706,8 +706,4 @@ function isContext(value: unknown): value is Context {
 	if (typeof value !== "object" || value === null) return false;
 	const candidate = value as Partial<Context>;
 	return typeof candidate.value === "function" && typeof candidate.toString === "function";
-}
-
-function toError(error: unknown): Error {
-	return error instanceof Error ? error : new Error(String(error));
 }

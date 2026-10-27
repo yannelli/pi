@@ -1,6 +1,7 @@
 import { readFile, realpath, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { type BundleFacetsResult, bundleFacets } from "./bundle.ts";
+import { isMissingPath, isRecord } from "./guards.ts";
 
 export interface BundleFacetPackageOptions {
 	/** Plugin package directory or its package.json path. */
@@ -221,12 +222,4 @@ function validateCanonicalPackageEntry(packageDirectory: string, path: string, n
 	if (relativePath === ".." || relativePath.startsWith(`..${sep}`) || isAbsolute(relativePath)) {
 		throw new Error(`Facet package entry ${name} resolves outside the package directory`);
 	}
-}
-
-function isMissingPath(error: unknown): boolean {
-	return isRecord(error) && error.code === "ENOENT";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

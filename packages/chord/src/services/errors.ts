@@ -24,3 +24,8 @@ export class RemoteServiceError extends Error {
 		this.code = code;
 	}
 }
+
+/** A thrown value as an Error, wrapping non-Error values by their string form. */
+export function toError(error: unknown): Error {
+	return error instanceof Error ? error : new Error(String(error));
+}

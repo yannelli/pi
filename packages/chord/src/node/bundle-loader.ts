@@ -6,6 +6,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compileFunction } from "node:vm";
 import type { Facet, FacetLoader, LoadedFacets } from "../types.ts";
+import { isRecord } from "./guards.ts";
 import {
 	FACET_BUNDLE_ARTIFACT_FORMAT,
 	FACET_BUNDLE_ARTIFACT_FORMAT_VERSION,
@@ -409,8 +410,4 @@ function validateManifest(value: unknown, path: string): FacetBundleManifest {
 		}),
 		entries: Object.freeze(entries),
 	});
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

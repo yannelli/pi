@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 import { type BuildOptions, build, type Message } from "esbuild";
+import { isMissingPath, isRecord } from "./guards.ts";
 import {
 	FACET_BUNDLE_FORMAT,
 	FACET_BUNDLE_FORMAT_VERSION,
@@ -211,12 +212,4 @@ function formatEsbuildMessage(message: Message): string {
 
 function isEsbuildMessage(value: unknown): value is Message {
 	return isRecord(value) && typeof value.text === "string" && (value.location === null || isRecord(value.location));
-}
-
-function isMissingPath(error: unknown): boolean {
-	return isRecord(error) && error.code === "ENOENT";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

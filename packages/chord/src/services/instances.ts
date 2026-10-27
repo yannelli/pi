@@ -1,5 +1,6 @@
 import { BACKGROUND_CONTEXT, withCancel } from "../context/index.ts";
 import type { Context } from "../types.ts";
+import { toError } from "./errors.ts";
 
 export interface InstanceDirectoryEntry {
 	readonly key: string;
@@ -144,8 +145,4 @@ export class InstanceDirectory<TEntry extends InstanceDirectoryEntry> {
 	#assertActive(): void {
 		if (this.#disposed) throw new Error("Keyed service directory is disposed");
 	}
-}
-
-function toError(error: unknown): Error {
-	return error instanceof Error ? error : new Error(String(error));
 }

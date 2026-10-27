@@ -13,6 +13,7 @@ import type {
 	ReplicatedStateSourceFrame,
 	ReplicatedStateSourceOptions,
 } from "../types.ts";
+import { toError } from "./errors.ts";
 import { registerReplicatedStateInternals } from "./state-internals.ts";
 
 /** The void signature also accepts synchronous callbacks that return an ignored value. */
@@ -450,8 +451,4 @@ function reportErrorAsync(error: Error): void {
 	queueMicrotask(() => {
 		throw error;
 	});
-}
-
-function toError(error: unknown): Error {
-	return error instanceof Error ? error : new Error(String(error));
 }
