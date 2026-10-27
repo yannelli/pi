@@ -13,8 +13,10 @@ export function operationSignal(signal?: AbortSignal): AbortSignal {
 /**
  * Stop waiting for an operation when its signal aborts while continuing to
  * observe the abandoned promise so a later rejection is always handled.
+ * Without a signal, returns the operation unchanged.
  */
-export function raceWithAbortSignal<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+export function raceWithAbortSignal<T>(operation: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+	if (!signal) return operation;
 	if (signal.aborted) {
 		void operation.catch(() => {});
 		return Promise.reject(abortReason(signal));

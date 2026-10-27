@@ -32,6 +32,26 @@ export function getClientApiKey(
 	throw new Error(`No API key for provider: ${provider}`);
 }
 
+/**
+ * Headers from `override` replace same-named headers in `base`, compared case-insensitively.
+ * Returns `undefined` when both are absent.
+ */
+export function mergeHeaders(
+	base: ProviderHeaders | undefined,
+	override: ProviderHeaders | undefined,
+): ProviderHeaders | undefined {
+	if (!base && !override) return undefined;
+	const merged = { ...base };
+	for (const [name, value] of Object.entries(override ?? {})) {
+		const lowerName = name.toLowerCase();
+		for (const existingName of Object.keys(merged)) {
+			if (existingName.toLowerCase() === lowerName) delete merged[existingName];
+		}
+		merged[name] = value;
+	}
+	return merged;
+}
+
 export function providerHeadersToRecord(
 	...headerSources: (ProviderHeaders | undefined)[]
 ): Record<string, string> | undefined {

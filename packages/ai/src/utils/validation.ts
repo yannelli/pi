@@ -279,7 +279,8 @@ function getValidator(schema: Tool["parameters"]): ReturnType<typeof Compile> {
 	return validator;
 }
 
-function formatValidationPath(error: TLocalizedValidationError): string {
+/** Dotted path of a TypeBox validation error, naming the missing property for `required` errors. */
+export function formatValidationPath(error: TLocalizedValidationError): string {
 	if (error.keyword === "required") {
 		const requiredProperties = (error.params as { requiredProperties?: string[] }).requiredProperties;
 		const requiredProperty = requiredProperties?.[0];

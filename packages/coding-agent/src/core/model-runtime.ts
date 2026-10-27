@@ -29,6 +29,7 @@ import {
 	type ImageModel,
 	type ImagesContext,
 	type ImagesOptions,
+	InMemoryModelsStore,
 	type LoginOptions,
 	lazyStream,
 	type Message,
@@ -51,12 +52,13 @@ import {
 	type MutableModels,
 	normalizeContext,
 	type Provider,
-	type ProviderHeaders,
 	type ProviderRequestOptions,
 	type SimpleStreamOptions,
 	type StreamOptions,
 } from "@earendil-works/pi-ai";
 import * as builtinProviderCatalog from "@earendil-works/pi-ai/providers/all";
+import { operationSignal, raceWithAbortSignal } from "@earendil-works/pi-ai/utils/abort";
+import { mergeHeaders } from "@earendil-works/pi-ai/utils/headers";
 import {
 	assertChatModel,
 	assertClassifierInputSupported,
@@ -66,10 +68,9 @@ import {
 	imageErrorResult,
 } from "@earendil-works/pi-ai/utils/model-operations";
 import { getAgentDir } from "../config.ts";
-import { operationSignal, raceWithAbortSignal } from "../utils/abort.ts";
 import { AuthStorage as DefaultAuthStorage } from "./auth-storage.ts";
 import { ModelConfig } from "./model-config.ts";
-import { FileModelsStore, InMemoryCodingAgentModelsStore } from "./models-store.ts";
+import { FileModelsStore } from "./models-store.ts";
 import {
 	type AuthStatus,
 	type CompatibilityRequestConfig,
@@ -152,22 +153,6 @@ export class CredentialSynchronizationError extends Error {
 	}
 }
 
-function mergeHeaders(
-	base: ProviderHeaders | undefined,
-	override: ProviderHeaders | undefined,
-): ProviderHeaders | undefined {
-	if (!base && !override) return undefined;
-	const merged = { ...base };
-	for (const [name, value] of Object.entries(override ?? {})) {
-		const lowerName = name.toLowerCase();
-		for (const existingName of Object.keys(merged)) {
-			if (existingName.toLowerCase() === lowerName) delete merged[existingName];
-		}
-		merged[name] = value;
-	}
-	return merged;
-}
-
 /** Configured pi-ai Models collection used by coding-agent and SDK consumers. */
 export class ModelRuntime implements Models {
 	private readonly models: MutableModels;
@@ -222,7 +207,7 @@ export class ModelRuntime implements Models {
 			options.modelsStore ??
 			(modelsPath
 				? new FileModelsStore(options.modelsStorePath ?? join(dirname(modelsPath), "models-store.json"))
-				: new InMemoryCodingAgentModelsStore());
+				: new InMemoryModelsStore());
 		const builtinModelDataGeneratedAt = builtinProviderCatalog.getBuiltinModelDataGeneratedAt();
 		const providers = builtinProviderCatalog
 			.builtinProviders()
