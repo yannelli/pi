@@ -5,6 +5,7 @@ import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
+import { extractTextContent, parseSessionFileTimestamp, resolveAutoSinceMs, walkJsonlFiles } from "./session-files.mjs";
 
 const DEFAULT_SESSIONS_DIR = path.join(homedir(), ".pi/agent/sessions");
 const DEFAULT_ACTIVE_EDIT_EXTENSION_PATH = path.join(homedir(), ".pi/agent/extensions/edit.ts");
@@ -79,52 +80,8 @@ Options:
 `);
 }
 
-function parseSessionFileTimestamp(sessionFile) {
-	const base = path.basename(sessionFile);
-	const rawTimestamp = base.split("_")[0];
-	if (!rawTimestamp) return null;
-	const isoTimestamp = rawTimestamp.replace(/T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/, "T$1:$2:$3.$4Z");
-	const ms = Date.parse(isoTimestamp);
-	if (!Number.isFinite(ms)) return null;
-	return ms;
-}
-
 function formatIso(ms) {
 	return new Date(ms).toISOString();
-}
-
-async function resolveAutoSinceMs(options) {
-	if (options.allSessions) return null;
-	if (options.since) {
-		const ms = Date.parse(options.since);
-		if (!Number.isFinite(ms)) {
-			throw new Error(`Invalid --since value: ${options.since}`);
-		}
-		return { ms, source: `--since ${options.since}` };
-	}
-	if (!options.autoSincePath) return null;
-	try {
-		const stats = await fs.stat(options.autoSincePath);
-		const birthtimeMs = Number.isFinite(stats.birthtimeMs) && stats.birthtimeMs > 0 ? stats.birthtimeMs : stats.mtimeMs;
-		if (!Number.isFinite(birthtimeMs) || birthtimeMs <= 0) return null;
-		return { ms: birthtimeMs, source: `birth time of ${options.autoSincePath}` };
-	} catch {
-		return null;
-	}
-}
-
-async function* walkJsonlFiles(dir) {
-	const entries = await fs.readdir(dir, { withFileTypes: true });
-	entries.sort((a, b) => a.name.localeCompare(b.name));
-
-	for (const entry of entries) {
-		const fullPath = path.join(dir, entry.name);
-		if (entry.isDirectory()) {
-			yield* walkJsonlFiles(fullPath);
-		} else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-			yield fullPath;
-		}
-	}
 }
 
 function getPathExtension(filePath) {
@@ -229,15 +186,6 @@ function formatBytes(value) {
 	if (value < 1024) return `${value}B`;
 	if (value < 1024 * 1024) return `${(value / 1024).toFixed(value >= 10 * 1024 ? 0 : 1)}KB`;
 	return `${(value / (1024 * 1024)).toFixed(1)}MB`;
-}
-
-function extractTextContent(content) {
-	if (typeof content === "string") return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.filter((block) => block?.type === "text" && typeof block.text === "string")
-		.map((block) => block.text)
-		.join("\n");
 }
 
 function classifyErrorKind(text, isError, matchedResult) {

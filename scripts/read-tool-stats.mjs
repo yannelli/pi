@@ -5,6 +5,7 @@ import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
+import { extractTextContent, parseSessionFileTimestamp, resolveAutoSinceMs, walkJsonlFiles } from "./session-files.mjs";
 
 const DEFAULT_SESSIONS_DIR = path.join(homedir(), ".pi/agent/sessions");
 const DEFAULT_ACTIVE_READ_TOOL_PATH = path.join(process.cwd(), "packages/coding-agent/src/core/tools/read.ts");
@@ -70,15 +71,6 @@ Options:
 `);
 }
 
-function parseSessionFileTimestamp(sessionFile) {
-	const base = path.basename(sessionFile);
-	const rawTimestamp = base.split("_")[0];
-	if (!rawTimestamp) return null;
-	const isoTimestamp = rawTimestamp.replace(/T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/, "T$1:$2:$3.$4Z");
-	const ms = Date.parse(isoTimestamp);
-	return Number.isFinite(ms) ? ms : null;
-}
-
 function formatIso(ms) {
 	return new Date(ms).toISOString();
 }
@@ -119,33 +111,6 @@ function getHourOfDayBucket(ms) {
 	return `${getTimeZoneParts(ms).hour}:00`;
 }
 
-async function resolveAutoSinceMs(options) {
-	if (options.allSessions) return null;
-	if (options.since) {
-		const ms = Date.parse(options.since);
-		if (!Number.isFinite(ms)) throw new Error(`Invalid --since value: ${options.since}`);
-		return { ms, source: `--since ${options.since}` };
-	}
-	if (!options.autoSincePath) return null;
-	try {
-		const stats = await fs.stat(options.autoSincePath);
-		const ms = Number.isFinite(stats.birthtimeMs) && stats.birthtimeMs > 0 ? stats.birthtimeMs : stats.mtimeMs;
-		return Number.isFinite(ms) && ms > 0 ? { ms, source: `birth time of ${options.autoSincePath}` } : null;
-	} catch {
-		return null;
-	}
-}
-
-async function* walkJsonlFiles(dir) {
-	const entries = await fs.readdir(dir, { withFileTypes: true });
-	entries.sort((a, b) => a.name.localeCompare(b.name));
-	for (const entry of entries) {
-		const fullPath = path.join(dir, entry.name);
-		if (entry.isDirectory()) yield* walkJsonlFiles(fullPath);
-		else if (entry.isFile() && entry.name.endsWith(".jsonl")) yield fullPath;
-	}
-}
-
 function formatInt(value) {
 	return new Intl.NumberFormat("en-US").format(value);
 }
@@ -168,15 +133,6 @@ function median(numbers) {
 function bar(part, total) {
 	const filled = total === 0 ? 0 : Math.round((part / total) * CHART_WIDTH);
 	return `${"█".repeat(filled)}${"░".repeat(CHART_WIDTH - filled)}`;
-}
-
-function extractTextContent(content) {
-	if (typeof content === "string") return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.filter((block) => block?.type === "text" && typeof block.text === "string")
-		.map((block) => block.text)
-		.join("\n");
 }
 
 function classifyRead(args) {

@@ -5,6 +5,7 @@ import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
+import { parseSessionFileTimestamp, walkJsonlFiles } from "./session-files.mjs";
 
 const DEFAULT_SESSIONS_DIR = path.join(homedir(), ".pi/agent/sessions");
 const MODELS_GENERATED_PATH = path.join(process.cwd(), "packages/ai/src/models.generated.ts");
@@ -52,13 +53,6 @@ Options:
 `);
 }
 
-function parseSessionFileTimestamp(sessionFile) {
-	const rawTimestamp = path.basename(sessionFile).split("_")[0];
-	if (!rawTimestamp) return null;
-	const ms = Date.parse(rawTimestamp.replace(/T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/, "T$1:$2:$3.$4Z"));
-	return Number.isFinite(ms) ? ms : null;
-}
-
 function getTimeZoneParts(ms) {
 	const parts = new Intl.DateTimeFormat("en-CA", {
 		timeZone: REPORT_TIME_ZONE,
@@ -97,16 +91,6 @@ function median(values) {
 	if (finite.length === 0) return null;
 	const middle = Math.floor(finite.length / 2);
 	return finite.length % 2 === 0 ? (finite[middle - 1] + finite[middle]) / 2 : finite[middle];
-}
-
-async function* walkJsonlFiles(dir) {
-	const entries = await fs.readdir(dir, { withFileTypes: true });
-	entries.sort((a, b) => a.name.localeCompare(b.name));
-	for (const entry of entries) {
-		const fullPath = path.join(dir, entry.name);
-		if (entry.isDirectory()) yield* walkJsonlFiles(fullPath);
-		else if (entry.isFile() && entry.name.endsWith(".jsonl")) yield fullPath;
-	}
 }
 
 async function loadContextWindows() {
