@@ -71,8 +71,9 @@ import {
 	buildBaseOptions,
 	clampMaxTokensToContext,
 	clampReasoning,
+	resolveCacheRetention,
 } from "./simple-options.ts";
-import { transformMessages } from "./transform-messages.ts";
+import { sanitizeToolCallId, transformMessages } from "./transform-messages.ts";
 
 export type BedrockThinkingDisplay = "summarized" | "omitted";
 
@@ -831,20 +832,6 @@ function mapThinkingLevelToEffort(
 }
 
 /**
- * Resolve cache retention preference.
- * Defaults to "short" and uses PI_CACHE_RETENTION for backward compatibility.
- */
-function resolveCacheRetention(cacheRetention?: CacheRetention, env?: ProviderEnv): CacheRetention {
-	if (cacheRetention) {
-		return cacheRetention;
-	}
-	if (getProviderEnvValue("PI_CACHE_RETENTION", env) === "long") {
-		return "long";
-	}
-	return "short";
-}
-
-/**
  * Check if the model is an Anthropic Claude model on Bedrock.
  * Checks both model ID and model name to support application inference profiles
  * whose ARNs don't contain the model name.
@@ -931,11 +918,6 @@ function buildSystemPrompt(
 	return blocks;
 }
 
-function normalizeToolCallId(id: string): string {
-	const sanitized = id.replace(/[^a-zA-Z0-9_-]/g, "_");
-	return sanitized.length > 64 ? sanitized.slice(0, 64) : sanitized;
-}
-
 function createNonBlankTextBlock(text: string): ContentBlock.TextMember | undefined {
 	const sanitized = sanitizeSurrogates(text);
 	return sanitized.trim().length === 0 ? undefined : { text: sanitized };
@@ -983,7 +965,7 @@ function convertMessages(
 	const transformedMessages = transformMessages(
 		withoutInitialSystemMessage(context.messages),
 		model,
-		normalizeToolCallId,
+		sanitizeToolCallId,
 	);
 
 	for (let i = 0; i < transformedMessages.length; i++) {

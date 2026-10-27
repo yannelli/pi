@@ -1,8 +1,10 @@
 import { clampThinkingLevel } from "../models.ts";
 import type {
 	Api,
+	CacheRetention,
 	Model,
 	ModelThinkingLevel,
+	ProviderEnv,
 	SamplingParams,
 	SimpleStreamOptions,
 	StreamOptions,
@@ -11,6 +13,7 @@ import type {
 	TranscriptContext,
 } from "../types.ts";
 import { estimateContextTokens } from "../utils/estimate.ts";
+import { getProviderEnvValue } from "../utils/provider-env.ts";
 
 const CONTEXT_SAFETY_TOKENS = 4096;
 const MIN_MAX_TOKENS = 1;
@@ -19,6 +22,20 @@ export function clampMaxTokensToContext(model: Model<Api>, context: TranscriptCo
 	if (model.contextWindow <= 0) return Math.max(MIN_MAX_TOKENS, maxTokens);
 	const available = model.contextWindow - estimateContextTokens(context).tokens - CONTEXT_SAFETY_TOKENS;
 	return Math.min(maxTokens, Math.max(MIN_MAX_TOKENS, available));
+}
+
+/**
+ * Resolve cache retention preference.
+ * Defaults to "short" and uses PI_CACHE_RETENTION for backward compatibility.
+ */
+export function resolveCacheRetention(cacheRetention?: CacheRetention, env?: ProviderEnv): CacheRetention {
+	if (cacheRetention) {
+		return cacheRetention;
+	}
+	if (getProviderEnvValue("PI_CACHE_RETENTION", env) === "long") {
+		return "long";
+	}
+	return "short";
 }
 
 export function resolveSamplingParams(

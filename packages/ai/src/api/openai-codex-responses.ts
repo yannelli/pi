@@ -18,7 +18,6 @@ import type {
 	StreamFunction,
 	StreamOptions,
 	TranscriptContext,
-	Usage,
 } from "../types.ts";
 import { combineAbortSignals } from "../utils/abort-signals.ts";
 import {
@@ -42,7 +41,12 @@ import {
 import { uuidv7 } from "../utils/uuid.ts";
 import { createGrammarToolInputProperties } from "./constrained-sampling.ts";
 import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
-import { convertResponsesMessages, convertResponsesTools, processResponsesStream } from "./openai-responses-shared.ts";
+import {
+	convertResponsesMessages,
+	convertResponsesTools,
+	processResponsesStream,
+	scaleUsageCost,
+} from "./openai-responses-shared.ts";
 import { buildBaseOptions } from "./simple-options.ts";
 
 // ============================================================================
@@ -613,21 +617,6 @@ function getServiceTierCostMultiplier(
 	}
 }
 
-function applyServiceTierPricing(
-	usage: Usage,
-	serviceTier: ResponseCreateParamsStreaming["service_tier"] | undefined,
-	model: Pick<Model<"openai-codex-responses">, "id">,
-) {
-	const multiplier = getServiceTierCostMultiplier(model, serviceTier);
-	if (multiplier === 1) return;
-
-	usage.cost.input *= multiplier;
-	usage.cost.output *= multiplier;
-	usage.cost.cacheRead *= multiplier;
-	usage.cost.cacheWrite *= multiplier;
-	usage.cost.total = usage.cost.input + usage.cost.output + usage.cost.cacheRead + usage.cost.cacheWrite;
-}
-
 function resolveCodexServiceTier(
 	responseServiceTier: ResponseCreateParamsStreaming["service_tier"] | undefined,
 	requestServiceTier: ResponseCreateParamsStreaming["service_tier"] | undefined,
@@ -674,7 +663,8 @@ async function processStream(
 			serviceTier: options?.serviceTier,
 			grammarToolInputProperties,
 			resolveServiceTier: resolveCodexServiceTier,
-			applyServiceTierPricing: (usage, serviceTier) => applyServiceTierPricing(usage, serviceTier, model),
+			applyServiceTierPricing: (usage, serviceTier) =>
+				scaleUsageCost(usage, getServiceTierCostMultiplier(model, serviceTier)),
 		},
 	);
 }
@@ -1557,7 +1547,8 @@ async function processWebSocketStream(
 				serviceTier: options?.serviceTier,
 				grammarToolInputProperties,
 				resolveServiceTier: resolveCodexServiceTier,
-				applyServiceTierPricing: (usage, serviceTier) => applyServiceTierPricing(usage, serviceTier, model),
+				applyServiceTierPricing: (usage, serviceTier) =>
+					scaleUsageCost(usage, getServiceTierCostMultiplier(model, serviceTier)),
 			},
 		);
 		if (options?.signal?.aborted) {

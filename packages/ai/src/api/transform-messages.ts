@@ -56,6 +56,11 @@ function downgradeUnsupportedImages<TApi extends Api>(messages: Message[], model
 	});
 }
 
+/** Replace characters outside `[a-zA-Z0-9_-]` and cap at 64 characters, as Anthropic and Bedrock require. */
+export function sanitizeToolCallId(id: string): string {
+	return id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
+}
+
 /**
  * Normalize tool call ID for cross-provider compatibility.
  * OpenAI Responses API generates IDs that are 450+ chars with special characters like `|`.

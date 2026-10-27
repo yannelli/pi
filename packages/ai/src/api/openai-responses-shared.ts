@@ -107,6 +107,17 @@ function convertToolResultOutput<TApi extends Api>(
 	return output;
 }
 
+/** Scale every cost component by a service tier multiplier and recompute the total. */
+export function scaleUsageCost(usage: Usage, multiplier: number): void {
+	if (multiplier === 1) return;
+
+	usage.cost.input *= multiplier;
+	usage.cost.output *= multiplier;
+	usage.cost.cacheRead *= multiplier;
+	usage.cost.cacheWrite *= multiplier;
+	usage.cost.total = usage.cost.input + usage.cost.output + usage.cost.cacheRead + usage.cost.cacheWrite;
+}
+
 export interface OpenAIResponsesStreamOptions {
 	onProviderStreamEvent?: StreamOptions["onProviderStreamEvent"];
 	serviceTier?: ResponseCreateParamsStreaming["service_tier"];
