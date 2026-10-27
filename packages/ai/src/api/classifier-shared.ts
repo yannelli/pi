@@ -53,6 +53,50 @@ function requestHeaders(
 }
 
 /**
+ * Posts a JSON payload with a fresh timeout per attempt and provider retries, without auth or hooks.
+ * Throws a {@link ClassifierHttpError} for a non-2xx status. `noRetryStatuses` lists HTTP statuses
+ * that fail at once although they are normally retried.
+ */
+export async function fetchClassifierJson(
+	label: string,
+	url: string | URL,
+	headers: Record<string, string>,
+	payload: unknown,
+	options: ClassifierOptions | undefined,
+	noRetryStatuses?: readonly number[],
+): Promise<{ response: Response; json: unknown }> {
+	const requestFetch = options?.fetch ?? globalThis.fetch;
+	return retryProviderRequest(
+		async () => {
+			const timeoutSignal = options?.timeoutMs !== undefined ? AbortSignal.timeout(options.timeoutMs) : undefined;
+			const signal =
+				options?.signal && timeoutSignal
+					? AbortSignal.any([options.signal, timeoutSignal])
+					: (options?.signal ?? timeoutSignal);
+			try {
+				const next = await requestFetch(url, {
+					method: "POST",
+					headers,
+					body: JSON.stringify(payload),
+					signal,
+				});
+				if (!next.ok) throw httpError(label, next, await next.text());
+				return { response: next, json: (await next.json()) as unknown };
+			} catch (error) {
+				if (timeoutSignal?.aborted && !options?.signal?.aborted) throw timeoutError(options!.timeoutMs!);
+				throw error;
+			}
+		},
+		{
+			maxRetries: options?.maxRetries ?? 2,
+			maxRetryDelayMs: options?.maxRetryDelayMs,
+			signal: options?.signal,
+			noRetryStatuses,
+		},
+	);
+}
+
+/**
  * Posts one JSON classifier request with bearer auth, `onPayload`/`onResponse` hooks, a fresh
  * timeout per attempt, and provider retries. Returns the parsed response body; throws on failure.
  * `noRetryStatuses` lists HTTP statuses that fail at once although they are normally retried.
@@ -66,38 +110,16 @@ export async function postClassifierRequest(
 	noRetryStatuses?: readonly number[],
 ): Promise<unknown> {
 	if (!options?.apiKey) throw new Error(`No API key for provider: ${model.provider}`);
-	const apiKey = options.apiKey;
 	let payload = body;
 	const transformed = await options.onPayload?.(payload, model);
 	if (transformed !== undefined) payload = transformed;
-	const requestFetch = options.fetch ?? globalThis.fetch;
-	const { response, json } = await retryProviderRequest(
-		async () => {
-			const timeoutSignal = options.timeoutMs !== undefined ? AbortSignal.timeout(options.timeoutMs) : undefined;
-			const signal =
-				options.signal && timeoutSignal
-					? AbortSignal.any([options.signal, timeoutSignal])
-					: (options.signal ?? timeoutSignal);
-			try {
-				const next = await requestFetch(url, {
-					method: "POST",
-					headers: requestHeaders(model, apiKey, options.headers),
-					body: JSON.stringify(payload),
-					signal,
-				});
-				if (!next.ok) throw httpError(label, next, await next.text());
-				return { response: next, json: (await next.json()) as unknown };
-			} catch (error) {
-				if (timeoutSignal?.aborted && !options.signal?.aborted) throw timeoutError(options.timeoutMs!);
-				throw error;
-			}
-		},
-		{
-			maxRetries: options.maxRetries ?? 2,
-			maxRetryDelayMs: options.maxRetryDelayMs,
-			signal: options.signal,
-			noRetryStatuses,
-		},
+	const { response, json } = await fetchClassifierJson(
+		label,
+		url,
+		requestHeaders(model, options.apiKey, options.headers),
+		payload,
+		options,
+		noRetryStatuses,
 	);
 	await options.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
 	return json;

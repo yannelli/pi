@@ -11,7 +11,7 @@ import type {
 } from "../types.ts";
 import { formatProviderError, normalizeProviderError } from "../utils/error-body.ts";
 import { headersToRecord, providerHeadersToRecord } from "../utils/headers.ts";
-import { retryProviderRequest } from "../utils/provider-retry.ts";
+import { fetchClassifierJson, isRecord } from "./classifier-shared.ts";
 
 /**
  * Classification with a chat model served by llama.cpp's `llama-server`.
@@ -62,33 +62,6 @@ export interface LabeledQuestion {
 	labels: string[];
 	/** Answer key each label stands for: choice keys, level indices, or `true`/`false`. */
 	keys: string[];
-}
-
-interface HttpError extends Error {
-	status: number | undefined;
-	headers: Headers | undefined;
-	body: string;
-}
-
-function httpError(response: Response, body: string): HttpError {
-	const error = new Error(`${LABEL} returned ${response.status}`) as HttpError;
-	error.status = response.status;
-	error.headers = response.headers;
-	error.body = body;
-	return error;
-}
-
-function timeoutError(timeoutMs: number): HttpError {
-	const error = new Error(`Request timed out after ${timeoutMs}ms`) as HttpError;
-	error.name = "TimeoutError";
-	error.status = undefined;
-	error.headers = undefined;
-	error.body = "";
-	return error;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** The server root: pi's llama.cpp models use the OpenAI-compatible `/v1` URL as their base URL. */
@@ -231,7 +204,6 @@ async function post(request: RequestContext, path: string, body: unknown, observ
 		const transformed = await options?.onPayload?.(payload, model);
 		if (transformed !== undefined) payload = transformed;
 	}
-	const requestFetch = options?.fetch ?? globalThis.fetch;
 	const headers =
 		providerHeadersToRecord(
 			{
@@ -241,29 +213,7 @@ async function post(request: RequestContext, path: string, body: unknown, observ
 			model.headers,
 			options?.headers,
 		) ?? {};
-	const { response, json } = await retryProviderRequest(
-		async () => {
-			const timeoutSignal = options?.timeoutMs !== undefined ? AbortSignal.timeout(options.timeoutMs) : undefined;
-			const signal =
-				options?.signal && timeoutSignal
-					? AbortSignal.any([options.signal, timeoutSignal])
-					: (options?.signal ?? timeoutSignal);
-			try {
-				const next = await requestFetch(`${root}${path}`, {
-					method: "POST",
-					headers,
-					body: JSON.stringify(payload),
-					signal,
-				});
-				if (!next.ok) throw httpError(next, await next.text());
-				return { response: next, json: (await next.json()) as unknown };
-			} catch (error) {
-				if (timeoutSignal?.aborted && !options?.signal?.aborted) throw timeoutError(options!.timeoutMs!);
-				throw error;
-			}
-		},
-		{ maxRetries: options?.maxRetries ?? 2, maxRetryDelayMs: options?.maxRetryDelayMs, signal: options?.signal },
-	);
+	const { response, json } = await fetchClassifierJson(LABEL, `${root}${path}`, headers, payload, options);
 	if (observe) {
 		await options?.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
 	}
